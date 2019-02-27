@@ -8,10 +8,35 @@
 
 DWORD WINAPI Thing(LPVOID);
 
-bool HDReflections, PseudoXbox360Reflections;
+bool HDReflections, PseudoXbox360Reflections, DisableReflectionBlur;
 static int ResolutionX, ResolutionY;
 DWORD GameState;
 HWND windowHandle;
+
+DWORD RoadReflectionCodeCaveExit1 = 0x71AA2B;
+DWORD RoadReflectionCodeCaveExit2 = 0x71AA7B;
+
+void __declspec(naked) RoadReflectionCodeCave1()
+{
+	__asm {
+		mov edx, dword ptr ds : [ResolutionX]
+		push edx
+		push eax
+		call dword ptr ds : [ecx + 0x5C]
+		jmp RoadReflectionCodeCaveExit1
+	}
+}
+
+void __declspec(naked) RoadReflectionCodeCave2()
+{
+	__asm {
+		mov ecx, dword ptr ds : [ResolutionX]
+		push ecx
+		push eax
+		call dword ptr ds : [edx + 0x74]
+		jmp RoadReflectionCodeCaveExit2
+	}
+}
 
 void Init()
 {
@@ -25,9 +50,18 @@ void Init()
 	// General
 	HDReflections = iniReader.ReadInteger("GENERAL", "HDReflections", 1);
 	PseudoXbox360Reflections = iniReader.ReadInteger("GENERAL", "PseudoXbox360Reflections", 1);
+	DisableReflectionBlur = iniReader.ReadInteger("GENERAL", "DisableReflectionBlur", 0);
 
 	if (HDReflections)
 	{
+		// Road Reflection X
+		injector::MakeJMP(0x71AA26, RoadReflectionCodeCave1, true);
+		injector::MakeJMP(0x71AA76, RoadReflectionCodeCave2, true);
+		injector::WriteMemory<uint32_t>(0x71BE28, ResolutionX, true);
+		// Road Reflection Y
+		injector::MakeNOP(0x71A9FC, 2, true);
+		injector::WriteMemory<uint32_t>(0x71A9F8, ResolutionY, true);
+		injector::WriteMemory<uint32_t>(0x71BE2F, ResolutionY, true);
 		// Vehicle Reflection
 		injector::WriteMemory<uint32_t>(0x70DE39, ResolutionY, true);
 	}
