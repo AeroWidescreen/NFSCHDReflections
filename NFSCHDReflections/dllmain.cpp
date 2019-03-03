@@ -8,20 +8,22 @@
 
 DWORD WINAPI Thing(LPVOID);
 
-bool HDReflections, PseudoXbox360Reflections;
+bool HDReflections, PseudoXbox360Reflections, TrafficSignFix;
 static int ResolutionX, ResolutionY;
 static float ReflectionBlurStrength;
-static float DownScale4x4Strength = 2.0f;
+static float DOFStrength = 2.0f;
+static float FEReflectionStrength = 4.0f;
+static float TrafficSignDistance = 45000.0f;
 DWORD GameState;
 HWND windowHandle;
 
 DWORD RoadReflectionCodeCaveExit1 = 0x71AA2B;
 DWORD RoadReflectionCodeCaveExit2 = 0x71AA7B;
-DWORD ReflectionBlurStrengthCodeCaveExit = 0x73C982;
 DWORD DownScale4x4ReturnAddress;
 DWORD DownScale4x4ReturnAddressCodeCaveExit = 0x748886;
 DWORD DownScale4x4StrengthCodeCaveExit1 = 0x73CC2F;
 DWORD DownScale4x4StrengthCodeCaveExit2 = 0x73CC43;
+DWORD TrafficSignFixCodeCaveExit = 0x71E085;
 
 void __declspec(naked) RoadReflectionCodeCave1()
 {
@@ -45,14 +47,6 @@ void __declspec(naked) RoadReflectionCodeCave2()
 	}
 }
 
-void __declspec(naked) ReflectionBlurStrengthCodeCave()
-{
-	__asm {
-		fdivr dword ptr ds : [ReflectionBlurStrength]
-		jmp ReflectionBlurStrengthCodeCaveExit
-	}
-}
-
 void __declspec(naked) DownScale4x4ReturnAddressCodeCave()
 {
 	__asm {
@@ -72,34 +66,60 @@ void __declspec(naked) DownScale4x4ReturnAddressCodeCave()
 void __declspec(naked) DownScale4x4StrengthCodeCave1()
 {
 	__asm {
-		// horizontal road reflection
 		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x72E22E
-		jne DownScale4x4StrengthCodeCave1Part2
-		fdivr dword ptr ds : [ReflectionBlurStrength]
+		je DownScale4x4StrengthCodeCave1Part2
+		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x726B17
+		je DownScale4x4StrengthCodeCave1Part3
+		
+		// restores horizontal depth of field
+		fdivr dword ptr ds : [DOFStrength]
 		jmp DownScale4x4StrengthCodeCaveExit1
 		
 	DownScale4x4StrengthCodeCave1Part2 :
-		// restores horizontal depth of field
-		fdivr dword ptr ds : [DownScale4x4Strength]
+		// horizontal road reflection
+		fdivr dword ptr ds : [ReflectionBlurStrength]
 		jmp DownScale4x4StrengthCodeCaveExit1
 
-		
+	DownScale4x4StrengthCodeCave1Part3 :
+		// restores horizontal frontend blur
+		fdivr dword ptr ds : [FEReflectionStrength]
+			jmp DownScale4x4StrengthCodeCaveExit1	
 	}
 }
 
 void __declspec(naked) DownScale4x4StrengthCodeCave2()
 {
 	__asm {
-		// vertical road reflection
 		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x72E22E
-		jne DownScale4x4StrengthCodeCave2Part2
-		fdivr dword ptr ds : [ReflectionBlurStrength]
+		je DownScale4x4StrengthCodeCave2Part2
+		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x726B17
+		je DownScale4x4StrengthCodeCave2Part3
+		
+		// restores vertical depth of field
+		fdivr dword ptr ds : [DOFStrength]
 		jmp DownScale4x4StrengthCodeCaveExit2
 
 	DownScale4x4StrengthCodeCave2Part2 :
-		// restores vertical depth of field
-		fdivr dword ptr ds : [DownScale4x4Strength]
+		// vertical road reflection
+		fdivr dword ptr ds : [ReflectionBlurStrength]
 		jmp DownScale4x4StrengthCodeCaveExit2
+
+	DownScale4x4StrengthCodeCave2Part3 :
+		// restores vertical frontend blur
+		fdivr dword ptr ds : [FEReflectionStrength]
+		jmp DownScale4x4StrengthCodeCaveExit2
+	}
+}
+
+void __declspec(naked) TrafficSignFixCodeCave()
+{
+	__asm {
+		// traffic sign brightness
+		mov ecx, dword ptr ds : [0xA6B910]
+		mov dword ptr ds : [ecx + 0x74], 0x41000000
+		fld dword ptr ds : [esi + 0x6C]
+		fmul dword ptr ds : [esi + 0x64]
+		jmp TrafficSignFixCodeCaveExit
 	}
 }
 
@@ -115,7 +135,8 @@ void Init()
 	// General
 	HDReflections = iniReader.ReadInteger("GENERAL", "HDReflections", 1);
 	PseudoXbox360Reflections = iniReader.ReadInteger("GENERAL", "PseudoXbox360Reflections", 1);
-	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 0.0f);
+	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 2.0f);
+	TrafficSignFix = iniReader.ReadInteger("GENERAL", "TrafficSignFix", 1);
 
 	if (HDReflections)
 	{
@@ -136,10 +157,17 @@ void Init()
 		injector::WriteMemory<uint8_t>(0x72ECE4, 0x02, true);
 	}
 
+	if (TrafficSignFix)
+	{
+		// Jump
+		injector::MakeJMP(0x71E07F, TrafficSignFixCodeCave, true);
+		// TrafficSignDistance
+		injector::WriteMemory(0x79B257, &TrafficSignDistance, true);
+	}
+
 	// ReflectionBlurStength
 	{
 		// Jumps
-		injector::MakeJMP(0x73C97C, ReflectionBlurStrengthCodeCave);
 		injector::MakeJMP(0x748880, DownScale4x4ReturnAddressCodeCave);
 		injector::MakeJMP(0x73CC29, DownScale4x4StrengthCodeCave1);
 		injector::MakeJMP(0x73CC3D, DownScale4x4StrengthCodeCave2);
@@ -148,6 +176,11 @@ void Init()
 		injector::MakeNOP(0x713141, 2);
 		injector::MakeNOP(0x73C359, 2);
 		injector::MakeNOP(0x73C371, 2);
+		// TwoPassBlur
+		injector::WriteMemory(0x73C97E, &ReflectionBlurStrength);
+		// GaussBlur5x5
+		injector::WriteMemory(0x73C68E, &DOFStrength);
+		injector::WriteMemory(0x73C6A8, &DOFStrength);
 	}
 }
 	
