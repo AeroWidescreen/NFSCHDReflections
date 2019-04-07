@@ -8,7 +8,7 @@
 
 DWORD WINAPI Thing(LPVOID);
 
-bool HDReflections, PseudoXbox360Reflections, TrafficSignFix;
+bool HDReflections, PseudoXbox360Reflections, TrafficSignFix, HiddenVisualTreatment;
 static int ResolutionX, ResolutionY;
 static float ReflectionBlurStrength;
 static float DOFStrength = 2.0f;
@@ -134,9 +134,12 @@ void Init()
 
 	// General
 	HDReflections = iniReader.ReadInteger("GENERAL", "HDReflections", 1);
-	PseudoXbox360Reflections = iniReader.ReadInteger("GENERAL", "PseudoXbox360Reflections", 1);
+	PseudoXbox360Reflections = iniReader.ReadInteger("GENERAL", "PseudoXbox360Reflections", 0);
 	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 2.0f);
-	TrafficSignFix = iniReader.ReadInteger("GENERAL", "TrafficSignFix", 1);
+	
+	// Extra
+	TrafficSignFix = iniReader.ReadInteger("EXTRA", "TrafficSignFix", 1);
+	HiddenVisualTreatment = iniReader.ReadInteger("EXTRA", "HiddenVisualTreatment", 1);
 
 	if (HDReflections)
 	{
@@ -163,6 +166,12 @@ void Init()
 		injector::MakeJMP(0x71E07F, TrafficSignFixCodeCave, true);
 		// TrafficSignDistance
 		injector::WriteMemory(0x79B257, &TrafficSignDistance, true);
+	}
+
+	if (HiddenVisualTreatment)
+	{
+		// VT pointer
+		injector::WriteMemory<uint32_t>(0x71D702, 0xB4306C, true);
 	}
 
 	// ReflectionBlurStength
