@@ -153,6 +153,12 @@ void Init()
 		injector::WriteMemory<uint32_t>(0x71BE2F, ResolutionY, true);
 		// Vehicle Reflection
 		injector::WriteMemory<uint32_t>(0x70DE39, ResolutionY, true);
+		// RVM Reflection
+		// Aspect ratio is based on NFSU2 because true aspect ratio is unknown
+		injector::WriteMemory<uint32_t>(0x70DB04, ResolutionY, true);
+		injector::MakeNOP(0x70DB08, 2, true);
+		injector::WriteMemory<uint32_t>(0x70DB62, ResolutionY / 3, true);
+		injector::MakeNOP(0x70DB66, 2, true);
 	}
 
 	if (PseudoXbox360Reflections)
