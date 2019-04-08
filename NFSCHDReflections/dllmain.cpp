@@ -139,7 +139,7 @@ void Init()
 	
 	// Extra
 	TrafficSignFix = iniReader.ReadInteger("EXTRA", "TrafficSignFix", 1);
-	HiddenVisualTreatment = iniReader.ReadInteger("EXTRA", "HiddenVisualTreatment", 1);
+	HiddenVisualTreatment = iniReader.ReadInteger("EXTRA", "HiddenVisualTreatment", 0);
 
 	if (HDReflections)
 	{
