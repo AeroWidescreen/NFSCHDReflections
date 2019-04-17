@@ -24,6 +24,7 @@ DWORD DownScale4x4ReturnAddressCodeCaveExit = 0x748886;
 DWORD DownScale4x4StrengthCodeCaveExit1 = 0x73CC2F;
 DWORD DownScale4x4StrengthCodeCaveExit2 = 0x73CC43;
 DWORD TrafficSignFixCodeCaveExit = 0x71E085;
+DWORD ImproveReflectionLODCodeCaveExit = 0x79AE9A;
 
 void __declspec(naked) RoadReflectionCodeCave1()
 {
@@ -123,6 +124,24 @@ void __declspec(naked) TrafficSignFixCodeCave()
 	}
 }
 
+void __declspec(naked) ImproveReflectionLODCodeCave()
+{
+	__asm {
+		cmp dword ptr ds : [ebx + 0x08], 0x03
+		je ImproveReflectionLODCodeCave2
+		mov edi, dword ptr ds : [ebx + 0x08]
+		lea ecx, dword ptr ds : [edx + edx * 0x4]
+		jmp ImproveReflectionLODCodeCaveExit
+
+	ImproveReflectionLODCodeCave2 :
+		// for mirror LOD
+		mov edi, 0x01
+		lea ecx, dword ptr ds : [edx + edx * 4]
+		jmp ImproveReflectionLODCodeCaveExit
+
+	}
+}
+
 void Init()
 {
 	// Read values from .ini
@@ -165,8 +184,9 @@ void Init()
 	if (ImproveReflectionLOD)
 	{
 		// RVM LOD
+		injector::MakeJMP(0x79AE94, ImproveReflectionLODCodeCave, true);
 		injector::WriteMemory<uint32_t>(0x710427, 0x00000000, true);
-		// Full LOD Improvement
+		// General LOD
 		injector::MakeNOP(0x79FACD, 2, true);
 		injector::WriteMemory<uint8_t>(0x79FB65, 0xEB, true);
 	}
