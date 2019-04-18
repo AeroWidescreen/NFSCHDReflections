@@ -25,6 +25,8 @@ DWORD DownScale4x4StrengthCodeCaveExit1 = 0x73CC2F;
 DWORD DownScale4x4StrengthCodeCaveExit2 = 0x73CC43;
 DWORD TrafficSignFixCodeCaveExit = 0x71E085;
 DWORD ImproveReflectionLODCodeCaveExit = 0x79AE9A;
+DWORD VehicleReflShaderCodeCaveExit = 0x7236D5;
+DWORD PseudoXbox360ReflectionsCodeCaveExit = 0x79B001;
 
 void __declspec(naked) RoadReflectionCodeCave1()
 {
@@ -138,7 +140,58 @@ void __declspec(naked) ImproveReflectionLODCodeCave()
 		mov edi, 0x01
 		lea ecx, dword ptr ds : [edx + edx * 4]
 		jmp ImproveReflectionLODCodeCaveExit
+	}
+}
 
+void __declspec(naked) VehicleReflShaderCodeCave()
+{
+	__asm {
+		mov eax, dword ptr ds : [ebx + 0x00001774]
+		cmp eax, 0x02
+		je VehicleReflShaderCodeCave2
+		jmp VehicleReflShaderCodeCaveExit
+
+	VehicleReflShaderCodeCave2 :
+		mov eax, 0x05
+		jmp VehicleReflShaderCodeCaveExit
+	}
+}
+
+void __declspec(naked) PseudoXbox360ReflectionsCodeCave()
+{
+	__asm {
+		sub esp, 0x14
+		push ebx
+		mov ebx, dword ptr ds : [esp + 0x1C]
+		mov eax, dword ptr ds : [ebx + 0x40]
+		add eax, 0x40
+		mov dword ptr ds : [esp + 0x10], eax
+		mov eax, [esp + 0x20]
+		push esi
+		xor esi, esi
+		test al, 0x01
+		mov dword ptr ds : [esp + 0x08], esi
+		mov dword ptr ds : [esp + 0x0C], esi
+		mov dword ptr ds : [esp + 0x20], esi
+		je conditional1
+		mov dword ptr ds : [esp + 0x08], 0x00001000
+
+		conditional1 :
+		test ah, 0x04
+		je conditional2
+		mov dword ptr ds : [esp + 0x20], 0x00100000
+
+		conditional2 :
+		test al, al
+		jns conditional3
+		or dword ptr ds : [esp + 0x08], 0x00000100
+
+		conditional3 :
+		// removes road from reflection
+		mov edx, 0x00002000
+		test al, 0x08
+		mov dword ptr ds : [esp + 0x0C], edx
+		jmp PseudoXbox360ReflectionsCodeCaveExit
 	}
 }
 
@@ -154,7 +207,7 @@ void Init()
 	// General
 	HDReflections = iniReader.ReadInteger("GENERAL", "HDReflections", 1);
 	ImproveReflectionLOD = iniReader.ReadInteger("GENERAL", "ImproveReflectionLOD", 1);
-	PseudoXbox360Reflections = iniReader.ReadInteger("GENERAL", "PseudoXbox360Reflections", 0);
+	PseudoXbox360Reflections = iniReader.ReadInteger("GENERAL", "PseudoXbox360Reflections", 1);
 	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 2.0f);
 	
 	// Extra
@@ -193,7 +246,10 @@ void Init()
 
 	if (PseudoXbox360Reflections)
 	{
-		injector::WriteMemory<uint8_t>(0x72ECE4, 0x02, true);
+		// Reduces vehicle reflection shader to mimic console version
+		injector::MakeJMP(0x7236CF, VehicleReflShaderCodeCave, true);
+		// Removes the road within the vehicle reflection
+		injector::MakeCALL(0x72E535, PseudoXbox360ReflectionsCodeCave, true);
 	}
 
 	if (TrafficSignFix)
