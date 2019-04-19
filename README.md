@@ -6,7 +6,7 @@
 - HDReflections : Reflection resolution will be increased based on the values set.  
 - ImproveReflectionLOD : Increases the level of detail, but may cause objects to disappear.  
 - PseudoXbox360Reflections : Fakes the look of Xbox 360 vehicle reflections by making the road textures invisible.  
-- ReflectionBlurStrength : Controls the amount of blur used for road reflections.  
+- ReflectionBlurStrength : Controls the amount of blur used for road reflections and increases its resolution.  
 
 ## Extra Features
 - TrafficSignFix : Solves an issue where some traffic signs would not reflect any light.  
