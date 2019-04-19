@@ -2,9 +2,15 @@
 
 ## Features
 - ResolutionX : Controls the horizontal resolution of reflections.  
-- ResolutionY : Controls the vertical resolution of reflections. 
+- ResolutionY : Controls the vertical resolution of reflections.  
 - HDReflections : Reflection resolution will be increased based on the values set.  
-- PseudoXbox360Reflections : Fakes the look of Xbox 360 vehicle reflections by making the road textures invisible.
+- ImproveReflectionLOD : Increases the level of detail, but may cause objects to disappear.  
+- PseudoXbox360Reflections : Fakes the look of Xbox 360 vehicle reflections by making the road textures invisible.  
+- ReflectionBlurStrength : Controls the amount of blur used for road reflections.  
+
+## Extra Features
+- TrafficSignFix : Solves an issue where some traffic signs would not reflect any light.  
+- HiddenVisualTreatment : Replaces the existing visual treatment with an unused version.  
 
 ## Credits
 [Aero_](https://github.com/AeroWidescreen) : Creator of NFSC HD Reflections.  
