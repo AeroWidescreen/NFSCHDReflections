@@ -8,8 +8,8 @@
 
 DWORD WINAPI Thing(LPVOID);
 
-bool HDReflections, ImproveReflectionLOD, PseudoXbox360Reflections, TrafficSignFix, HiddenVisualTreatment;
-static int ResolutionX, ResolutionY;
+bool HDReflections, PseudoXbox360Reflections, TrafficSignFix, HiddenVisualTreatment;
+static int ResolutionX, ResolutionY, ImproveReflectionLOD;
 static float ReflectionBlurStrength;
 static float DOFStrength = 2.0f;
 static float FEReflectionStrength = 4.0f;
@@ -176,17 +176,17 @@ void __declspec(naked) PseudoXbox360ReflectionsCodeCave()
 		je conditional1
 		mov dword ptr ds : [esp + 0x08], 0x00001000
 
-		conditional1 :
+	conditional1 :
 		test ah, 0x04
 		je conditional2
 		mov dword ptr ds : [esp + 0x20], 0x00100000
 
-		conditional2 :
+	conditional2 :
 		test al, al
 		jns conditional3
 		or dword ptr ds : [esp + 0x08], 0x00000100
 
-		conditional3 :
+	conditional3 :
 		// removes road from reflection
 		mov edx, 0x00002000
 		test al, 0x08
@@ -234,19 +234,26 @@ void Init()
 		injector::MakeNOP(0x70DB66, 2, true);
 	}
 
-	if (ImproveReflectionLOD)
+	if (ImproveReflectionLOD >= 1)
 	{
-		// RVM LOD
-		injector::MakeJMP(0x79AE94, ImproveReflectionLODCodeCave, true);
-		injector::WriteMemory<uint32_t>(0x710427, 0x00000000, true);
-		// General LOD
+		// Vehicle Reflection LOD
 		injector::MakeNOP(0x79FACD, 2, true);
+		// RVM Reflection LOD
+		injector::WriteMemory<uint32_t>(0x710427, 0x00000000, true);
+		
+		if (ImproveReflectionLOD >= 2)
+		// Full LOD Improvement
+		injector::MakeJMP(0x79AE94, ImproveReflectionLODCodeCave, true);
+
+		// I don't know why I have to use the same conditional statement for this to work
+		if (ImproveReflectionLOD >= 2)
 		injector::WriteMemory<uint8_t>(0x79FB65, 0xEB, true);
+	
 	}
 
 	if (PseudoXbox360Reflections)
 	{
-		// Reduces vehicle reflection shader to mimic console version
+		// Reduces vehicle reflection shader to mimic the console version
 		injector::MakeJMP(0x7236CF, VehicleReflShaderCodeCave, true);
 		// Removes the road within the vehicle reflection
 		injector::MakeCALL(0x72E535, PseudoXbox360ReflectionsCodeCave, true);
@@ -267,21 +274,23 @@ void Init()
 	}
 
 	// ReflectionBlurStength
+	
+	if (ReflectionBlurStrength >= 0)
 	{
 		// Jumps
-		injector::MakeJMP(0x748880, DownScale4x4ReturnAddressCodeCave);
-		injector::MakeJMP(0x73CC29, DownScale4x4StrengthCodeCave1);
-		injector::MakeJMP(0x73CC3D, DownScale4x4StrengthCodeCave2);
+		injector::MakeJMP(0x748880, DownScale4x4ReturnAddressCodeCave, true);
+		injector::MakeJMP(0x73CC29, DownScale4x4StrengthCodeCave1, true);
+		injector::MakeJMP(0x73CC3D, DownScale4x4StrengthCodeCave2, true);
 		// Allows blur to render at full resolution
-		injector::MakeNOP(0x713108, 2);
-		injector::MakeNOP(0x713141, 2);
-		injector::MakeNOP(0x73C359, 2);
-		injector::MakeNOP(0x73C371, 2);
+		injector::MakeNOP(0x713108, 2, true);
+		injector::MakeNOP(0x713141, 2, true);
+		injector::MakeNOP(0x73C359, 2, true);
+		injector::MakeNOP(0x73C371, 2, true);
 		// TwoPassBlur
-		injector::WriteMemory(0x73C97E, &ReflectionBlurStrength);
+		injector::WriteMemory(0x73C97E, &ReflectionBlurStrength, true);
 		// GaussBlur5x5
-		injector::WriteMemory(0x73C68E, &DOFStrength);
-		injector::WriteMemory(0x73C6A8, &DOFStrength);
+		injector::WriteMemory(0x73C68E, &DOFStrength, true);
+		injector::WriteMemory(0x73C6A8, &DOFStrength, true);
 	}
 }
 	
