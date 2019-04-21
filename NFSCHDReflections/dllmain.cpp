@@ -247,7 +247,7 @@ void Init()
 
 		// I don't know why I have to use the same conditional statement for this to work
 		if (ImproveReflectionLOD >= 2)
-		injector::WriteMemory<uint8_t>(0x79FB65, 0xEB, true);
+		injector::WriteMemory<uint8_t>(0x79FB5C, 0x10, true);
 	
 	}
 
