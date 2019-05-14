@@ -4,7 +4,7 @@
 - ResolutionX : Controls the horizontal resolution of reflections.  
 - ResolutionY : Controls the vertical resolution of reflections.  
 - HDReflections : Reflection resolution will be increased based on the values set.  
-- ImproveReflectionLOD : Increases the level of detail, but may cause objects to disappear.  
+- ImproveReflectionLOD : Increases the level of detail used in reflections.  
 - PseudoXbox360Reflections : Fakes the look of Xbox 360 vehicle reflections by making the road textures invisible.  
 - ReflectionBlurStrength : Controls the amount of blur used for road reflections and increases its resolution.  
 
