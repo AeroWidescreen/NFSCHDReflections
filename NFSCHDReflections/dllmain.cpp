@@ -8,15 +8,16 @@
 
 DWORD WINAPI Thing(LPVOID);
 
-bool HDReflections, BrokenReflectionFix, RestoreSkybox, TrafficSignFix, HiddenVisualTreatment;
+bool HDReflections, BrokenReflectionFix, RestoreSkybox, RealFrontEndReflections, TrafficSignFix, HiddenVisualTreatment;
 static int ResolutionX, ResolutionY, ImproveReflectionLOD, ConsoleReflections;
 static float RoadScale, VehicleScale, MirrorScale, ReflectionBlurStrength;
 static float DOFStrength = 2.0f;
 static float FEReflectionStrength = 4.0f;
 static float TrafficSignDistance = 45000.0f;
-static float VehicleReflSkyboxRenderDistance = 0.1f;
-__int64 VehicleReflBrightness = 0x3F0000003FCCCCCD;
-DWORD GameState;
+static float VehicleReflSkyboxRenderDistance = 0.25f;
+static float VehicleReflBrightnessSubtraction = 1.0f;
+static float FEVehicleReflBrightness = 0.15f;
+__int64 VehicleReflBrightness;
 HWND windowHandle;
 
 DWORD RoadReflectionCodeCaveExit1 = 0x71AA2B;
@@ -31,13 +32,14 @@ DWORD TrafficSignFixCodeCaveExit = 0x71E085;
 DWORD ImproveReflectionLODCodeCaveExit = 0x79AE9A;
 DWORD VehicleReflShaderCodeCaveExit = 0x729461;
 DWORD BrokenVehicleReflFixCodeCave1Exit = 0x71B8A6;
-DWORD BrokenVehicleReflFixCodeCave2Exit = 0x721E0E;
-DWORD BrokenVehicleReflFixCodeCave3Exit = 0x73E1BA;
+DWORD BrokenVehicleReflFixCodeCave2Exit = 0x73E1BA;
 DWORD VehicleReflSkyboxCodeCaveExit = 0x7AFCAA;
 DWORD VehicleReflSkyboxCodeCavePart2Exit = 0x7AFCD5;
 DWORD VehicleReflSkyboxCodeCavePart2Jump = 0x7AFCAA;
-DWORD VehicleReflBrightnessCodeCaveExit = 0x748A81;
+DWORD VehicleReflBrightnessCodeCaveExit = 0x748A9D;
 DWORD sub_713B30 = 0x713B30;
+DWORD FEVehicleReflBrightnessCodeCaveExit = 0x71E24F;
+DWORD FEVehicleReflBrightnessCodeCavePart2Exit = 0x71E1A8;
 
 void __declspec(naked) RoadReflectionCodeCave1()
 {
@@ -188,18 +190,10 @@ void __declspec(naked) BrokenVehicleReflFixCodeCave1()
 {
 	__asm {
 		cmp eax, 0x16
-		jl BrokenVehicleReflFixCodeCave1Conditional2
-		mov dword ptr ds : [esp + 0x24], 0x3F000000
-		cmp eax, 0x1A
-		je BrokenVehicleReflFixCodeCave1Conditional1
-		cmp eax, 0x1B
-		jne BrokenVehicleReflFixCodeCave1Conditional2
+		jl BrokenVehicleReflFixCodeCave1Conditional
+		mov dword ptr ds : [esp + 0x24], 0x3F800000 
 
-	BrokenVehicleReflFixCodeCave1Conditional1:
-		// Top center and Bottom center
-		mov dword ptr ds : [esp + 0x24], 0x3F800000
-
-	BrokenVehicleReflFixCodeCave1Conditional2:
+	BrokenVehicleReflFixCodeCave1Conditional:
 		movzx ecx, word ptr ds : [edi + 0xE4]
 		jmp BrokenVehicleReflFixCodeCave1Exit
 	}
@@ -208,36 +202,15 @@ void __declspec(naked) BrokenVehicleReflFixCodeCave1()
 void __declspec(naked) BrokenVehicleReflFixCodeCave2()
 {
 	__asm {
-		mov dword ptr ds : [ebx + 0xE4], 0x4000
-		push eax
-		lea eax, dword ptr ds : [ebx + 0xE4]
-		cmp eax, 0xAB1664
-		je BrokenVehicleReflFixCodeCave2Conditional
-		cmp eax, 0xAB1954
-		je BrokenVehicleReflFixCodeCave2Conditional
-		jmp BrokenVehicleReflFixCodeCave2Part2
-
-	BrokenVehicleReflFixCodeCave2Conditional :
-		mov dword ptr ds : [ebx + 0xE4], 0x6000
-	
-	BrokenVehicleReflFixCodeCave2Part2 :
-		pop eax
-		jmp BrokenVehicleReflFixCodeCave2Exit
-	}
-}
-
-void __declspec(naked) BrokenVehicleReflFixCodeCave3()
-{
-	__asm {
 		cmp eax, 0x3ECCCCCD
-		jne BrokenVehicleReflFixCodeCave3Conditional
-		mov eax, 0x00
+		jne BrokenVehicleReflFixCodeCave2Conditional
+		mov eax, 0x3F15C28F
 	
-	BrokenVehicleReflFixCodeCave3Conditional :
+	BrokenVehicleReflFixCodeCave2Conditional :
 		push eax
 		mov ecx, esi
 		push 0x37
-		jmp BrokenVehicleReflFixCodeCave3Exit
+		jmp BrokenVehicleReflFixCodeCave2Exit
 	}
 }
 
@@ -272,25 +245,74 @@ void __declspec(naked) VehicleReflSkyboxCodeCave()
 void __declspec(naked) VehicleReflBrightnessCodeCave()
 {
 	__asm {
-		mov eax, dword ptr ds : [0xAB08F4]
-		mov eax, dword ptr ds : [eax + 0x04]
-		cmp eax, 0x16
-		jnl VehicleReflBrightnessCodeCavePart2
-		cmp dword ptr ds : [0xA99BBC], 0x06
+		push edx
+		mov edx, dword ptr ds : [0xAB08F4]
+		mov edx, dword ptr ds : [edx + 0x04]
+		cmp edx, 0x16
+		jl VehicleReflBrightnessCodeCavePart2
+		push ebx
+		lea ebx, dword ptr ds : [VehicleReflBrightness]
+		fld dword ptr ds : [eax]
+		fstp dword ptr ds : [ebx]
+		fld dword ptr ds : [eax + 0x4]
+		fsub dword ptr ds : [VehicleReflBrightnessSubtraction]
+		fstp dword ptr ds : [ebx + 0x04]
+		mov eax, ebx
+		pop ebx
+		pop edx
+		push eax
+		push 0x8B
 		jmp VehicleReflBrightnessCodeCaveExit
 
 	VehicleReflBrightnessCodeCavePart2 :
-		cmp dword ptr ds : [0xA99BBC], 06
-		mov dword ptr ds : [0xA6C210], 0x3ECCCCCD
-		lea eax, dword ptr ds : [VehicleReflBrightness]
-		je VehicleReflBrightnessCodeCaveConditional
-		mov eax, 0xA6C214
-
-	VehicleReflBrightnessCodeCaveConditional :
+		pop edx
 		push eax
 		push 0x8B
-		call sub_713B30
-		ret
+		jmp VehicleReflBrightnessCodeCaveExit
+	}
+}
+
+void __declspec(naked) FEVehicleReflBrightnessCodeCave()
+{
+	__asm {
+		fmul dword ptr ds: [esi + 0xC4]
+		cmp dword ptr ds: [0xA99BBC], 0x06
+		je VehicleReflBrightnessCodeCavePart2
+		fmul dword ptr ds : [FEVehicleReflBrightness]
+		fstp dword ptr ds : [esp + 0x30]
+		fld dword ptr ds : [esi + 0xCC]
+		fmul dword ptr ds : [esi + 0xC4]
+		fmul dword ptr ds : [FEVehicleReflBrightness]
+		fstp dword ptr ds : [esp + 0x34]
+		fld dword ptr ds : [esi + 0xD0]
+		fmul dword ptr ds : [esi + 0xC4]
+		fmul dword ptr ds : [FEVehicleReflBrightness]
+		fstp dword ptr ds : [esp + 0x38]
+		fld dword ptr ds : [esi + 0xD8]
+		fmul dword ptr ds : [esi + 0xD4]
+		mov eax, dword ptr ds : [esi + 0x8C]
+		mov edx, dword ptr ds : [esi + 0x54]
+		mov ecx, dword ptr ds : [esi + 0xB8]
+		fmul dword ptr ds : [FEVehicleReflBrightness]
+		mov dword ptr ds : [esp + 0x54], eax
+		mov dword ptr ds : [esp + 0x7C], 0x00
+		mov dword ptr ds : [esp + 0x50], edx
+		fsub dword ptr ds : [esp + 0x30]
+		mov dword ptr ds : [esp + 0x58], ecx
+		mov dword ptr ds : [esp + 0x5C], 0x00
+		fstp dword ptr ds : [esp + 0x70]
+		fld dword ptr ds : [esi + 0xDC]
+		fmul dword ptr ds : [esi + 0xD4]
+		fmul dword ptr ds : [FEVehicleReflBrightness]
+		fsub dword ptr ds : [esp + 0x34]
+		fstp dword ptr ds : [esp + 0x74]
+		fld dword ptr ds : [esi + 0xE0]
+		fmul dword ptr ds : [esi + 0xD4]
+		fmul dword ptr ds : [FEVehicleReflBrightness]
+		jmp FEVehicleReflBrightnessCodeCaveExit
+
+	VehicleReflBrightnessCodeCavePart2 :
+		jmp FEVehicleReflBrightnessCodeCavePart2Exit
 	}
 }
 
@@ -312,6 +334,7 @@ void Init()
 	ConsoleReflections = iniReader.ReadInteger("GENERAL", "ConsoleReflections", 2);
 	BrokenReflectionFix = iniReader.ReadInteger("GENERAL", "BrokenReflectionFix", 1);
 	RestoreSkybox = iniReader.ReadInteger("GENERAL", "RestoreSkybox", 1);
+	RealFrontEndReflections = iniReader.ReadInteger("GENERAL", "RealFrontEndReflections", 0);
 	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 2.0f);
 	
 	// Extra
@@ -324,10 +347,12 @@ void Init()
 		injector::MakeJMP(0x71AA26, RoadReflectionCodeCave1, true);
 		injector::MakeJMP(0x71AA76, RoadReflectionCodeCave2, true);
 		injector::WriteMemory<uint32_t>(0x71BE28, ResolutionX * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BDF1, ResolutionX * RoadScale, true);
 		// Road Reflection Y
 		injector::MakeNOP(0x71A9FC, 2, true);
 		injector::WriteMemory<uint32_t>(0x71A9F8, ResolutionY * RoadScale, true);
 		injector::WriteMemory<uint32_t>(0x71BE2F, ResolutionY * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BDF8, ResolutionY * RoadScale, true);
 		// Vehicle Reflection
 		injector::WriteMemory<uint32_t>(0x70DE39, ResolutionY * VehicleScale, true);
 		// RVM Reflection
@@ -361,19 +386,15 @@ void Init()
 
 		if (ConsoleReflections >= 2)
 		// Darkens the road, buildings, and other objects to match the Xbox 360 version
-		injector::MakeJMP(0x748A7A, VehicleReflBrightnessCodeCave, true);
+		injector::MakeJMP(0x748A97, VehicleReflBrightnessCodeCave, true);
 	}
 
 	if (BrokenReflectionFix)
 	{
 		// Corrects the FOV so all segments of the vehicle reflection aligns correctly
 		injector::MakeJMP(0x71B89F, BrokenVehicleReflFixCodeCave1, true);
-		// Corrects the FOV so all segments of the vehicle reflection aligns correctly
-		injector::MakeJMP(0x721E07, BrokenVehicleReflFixCodeCave2, true);
 		// Restores the original aspect ratio
-		injector::MakeJMP(0x73E1B5, BrokenVehicleReflFixCodeCave3, true);
-		// Restores missing chunks
-		injector::WriteMemory<uint32_t>(0xA63B10, 0x3EA66666, true);
+		injector::MakeJMP(0x73E1B5, BrokenVehicleReflFixCodeCave2, true);
 		// Solves an issue that caused the vehicle reflections to use the same geometric detail as the road reflections
 		injector::WriteMemory<uint32_t>(0x79AEDD, 0x00008002, true);
 	}
@@ -382,8 +403,18 @@ void Init()
 	{
 		// Increases the skybox render distance for vehicle reflections
 		injector::MakeJMP(0x7AFCA1, VehicleReflSkyboxCodeCave, true);
-		// Corrects the position of the skybox for road reflections
-		injector::WriteMemory<uint32_t>(0x9EF050, 0x3F400000, true);
+	}
+
+	if (RealFrontEndReflections)
+	{
+		// Enables real reflections
+		injector::MakeNOP(0x72ECE8, 2, true);
+		// Enables reflection mapping 
+		injector::MakeNOP(0x73E19F, 2, true);
+		// Enables skybox
+		injector::MakeNOP(0x72E4E6, 2, true);
+		// Reduces reflection brightness
+		injector::MakeJMP(0x71E1A2, FEVehicleReflBrightnessCodeCave, true);
 	}
 
 	if (TrafficSignFix)

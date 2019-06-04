@@ -5,7 +5,10 @@
 - ResolutionY : Controls the vertical resolution of reflections.  
 - HDReflections : Reflection resolution will be increased based on the values set.  
 - ImproveReflectionLOD : Increases the level of detail used in reflections.  
-- PseudoXbox360Reflections : Fakes the look of Xbox 360 vehicle reflections by making the road textures invisible.  
+- ConsoleReflections : Replicates the look of console vehicle reflections.  
+- BrokenReflectionFix : Fixes misaligned vehicle reflections and other problems.  
+- RestoreSkybox : Adds the skybox to reflections.  
+- RealFrontEndReflections : Enables real-time vehicle reflections in the front end.  
 - ReflectionBlurStrength : Controls the amount of blur used for road reflections and increases its resolution.  
 
 ## Extra Features
