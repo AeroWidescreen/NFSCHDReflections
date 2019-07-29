@@ -6,10 +6,9 @@
 #include "..\includes\IniReader.h"
 #include <d3d9.h>
 
-DWORD WINAPI Thing(LPVOID);
-
 bool HDReflections, BrokenReflectionFix, RestoreSkybox, RealFrontEndReflections, TrafficSignFix, HiddenVisualTreatment;
 static int ResolutionX, ResolutionY, ImproveReflectionLOD, ConsoleReflections;
+int ResX, ResY;
 static float RoadScale, VehicleScale, MirrorScale, ReflectionBlurStrength;
 static float DOFStrength = 2.0f;
 static float FEReflectionStrength = 4.0f;
@@ -26,7 +25,6 @@ static float VehicleReflSkyboxBrightnessSubtraction = 1.85f;
 __int64 VehicleReflBrightness;
 __int64 FEVehicleReflBrightness;
 __int64 VehicleReflSkyboxBrightness;
-HWND windowHandle;
 
 DWORD RoadReflectionCodeCaveExit1 = 0x71AA2B;
 DWORD RoadReflectionRes1 = 0x00000000;
@@ -53,7 +51,7 @@ DWORD sub_713B30 = 0x713B30;
 void __declspec(naked) RoadReflectionCodeCave1()
 {
 	__asm {
-		fild dword ptr ds : [ResolutionX]
+		fild dword ptr ds : [ResX]
 		fmul dword ptr ds : [RoadScale]
 		fistp dword ptr ds : [RoadReflectionRes1]
 		mov edx, dword ptr ds : [RoadReflectionRes1]
@@ -67,7 +65,7 @@ void __declspec(naked) RoadReflectionCodeCave1()
 void __declspec(naked) RoadReflectionCodeCave2()
 {
 	__asm {
-		fild dword ptr ds : [ResolutionX]
+		fild dword ptr ds : [ResX]
 		fmul dword ptr ds : [RoadScale]
 		fistp dword ptr ds : [RoadReflectionRes2]
 		mov ecx, dword ptr ds : [RoadReflectionRes2]
@@ -402,8 +400,8 @@ void Init()
 	CIniReader iniReader("NFSCHDReflections.ini");
 
 	// Resolution
-	ResolutionX = iniReader.ReadInteger("RESOLUTION", "ResolutionX", 1920);
-	ResolutionY = iniReader.ReadInteger("RESOLUTION", "ResolutionY", 1080);
+	ResX = iniReader.ReadInteger("RESOLUTION", "ResolutionX", 0);
+	ResY = iniReader.ReadInteger("RESOLUTION", "ResolutionY", 0);
 	RoadScale = iniReader.ReadFloat("RESOLUTION", "RoadScale", 1.0);
 	VehicleScale = iniReader.ReadFloat("RESOLUTION", "VehicleScale", 1.0);
 	MirrorScale = iniReader.ReadFloat("RESOLUTION", "MirrorScale", 1.0);
@@ -421,25 +419,31 @@ void Init()
 	TrafficSignFix = iniReader.ReadInteger("EXTRA", "TrafficSignFix", 1);
 	HiddenVisualTreatment = iniReader.ReadInteger("EXTRA", "HiddenVisualTreatment", 0);
 
+	if (ResX <= 0 || ResY <= 0)
+	{
+		ResX = ::GetSystemMetrics(SM_CXSCREEN);
+		ResY = ::GetSystemMetrics(SM_CYSCREEN);
+	}
+
 	if (HDReflections)
 	{
 		// Road Reflection X
 		injector::MakeJMP(0x71AA26, RoadReflectionCodeCave1, true);
 		injector::MakeJMP(0x71AA76, RoadReflectionCodeCave2, true);
-		injector::WriteMemory<uint32_t>(0x71BE28, ResolutionX * RoadScale, true);
-		injector::WriteMemory<uint32_t>(0x71BDF1, ResolutionX * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BE28, ResX * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BDF1, ResX * RoadScale, true);
 		// Road Reflection Y
 		injector::MakeNOP(0x71A9FC, 2, true);
-		injector::WriteMemory<uint32_t>(0x71A9F8, ResolutionY * RoadScale, true);
-		injector::WriteMemory<uint32_t>(0x71BE2F, ResolutionY * RoadScale, true);
-		injector::WriteMemory<uint32_t>(0x71BDF8, ResolutionY * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71A9F8, ResY * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BE2F, ResY * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BDF8, ResY * RoadScale, true);
 		// Vehicle Reflection
-		injector::WriteMemory<uint32_t>(0x70DE39, ResolutionY * VehicleScale, true);
+		injector::WriteMemory<uint32_t>(0x70DE39, ResY * VehicleScale, true);
 		// RVM Reflection
 		// Aspect ratio is based on NFSU2 because true aspect ratio is unknown
-		injector::WriteMemory<uint32_t>(0x70DB04, ResolutionY * MirrorScale, true);
+		injector::WriteMemory<uint32_t>(0x70DB04, ResY * MirrorScale, true);
 		injector::MakeNOP(0x70DB08, 2, true);
-		injector::WriteMemory<uint32_t>(0x70DB62, (ResolutionY / 3) * MirrorScale, true);
+		injector::WriteMemory<uint32_t>(0x70DB62, (ResY / 3) * MirrorScale, true);
 		injector::MakeNOP(0x70DB66, 2, true);
 	}
 
