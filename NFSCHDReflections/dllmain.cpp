@@ -11,6 +11,10 @@ static int ResolutionX, ResolutionY, ImproveReflectionLOD, XB360Reflections;
 int ResX, ResY;
 static float RoadScale, VehicleScale, MirrorScale, ReflectionBlurStrength;
 static float DOFStrength = 1.0f;
+static float ReflectionAspectRatioInGame;
+static float ReflectionAspectRatioInGameAddition = 0.185f;
+static float ReflectionAspectRatioFrontEnd;
+static float ReflectionAspectRatioFrontEndAddition = -0.4f;
 static float FEReflectionStrength = 1.0f;
 static float TrafficSignDistance = 45000.0f;
 static float PauseBlurValue1 = 1.0f;
@@ -331,11 +335,24 @@ void __declspec(naked) BrokenVehicleReflFixCodeCave1()
 void __declspec(naked) BrokenVehicleReflFixCodeCave2()
 {
 	__asm {
-		cmp eax, 0x3ECCCCCD
-		jne BrokenVehicleReflFixCodeCave2Part2
-		mov eax, 0x3F15C28F
-	
-	BrokenVehicleReflFixCodeCave2Part2 :
+		cmp dword ptr ds : [0xA99BBC], 0x06
+		je BrokenVehicleReflFixCodeCave2InGame
+		mov dword ptr ds : [ReflectionAspectRatioFrontEnd], eax
+		fld dword ptr ds : [ReflectionAspectRatioFrontEnd]
+		fadd dword ptr ds : [ReflectionAspectRatioFrontEndAddition]
+		fstp dword ptr ds : [ReflectionAspectRatioFrontEnd]
+		mov eax, dword ptr ds : [ReflectionAspectRatioFrontEnd]
+		jmp BrokenVehicleReflFixCodeCave2Part2
+
+	BrokenVehicleReflFixCodeCave2InGame:
+		mov dword ptr ds : [ReflectionAspectRatioInGame], eax
+		fld dword ptr ds : [ReflectionAspectRatioInGame]
+		fadd dword ptr ds : [ReflectionAspectRatioInGameAddition]
+		fstp dword ptr ds : [ReflectionAspectRatioInGame]
+		mov eax, dword ptr ds : [ReflectionAspectRatioInGame]
+		mov eax, 0x3F15C28F // 0.585 gameplay
+
+	BrokenVehicleReflFixCodeCave2Part2:
 		push eax
 		mov ecx, esi
 		push 0x37
@@ -468,7 +485,7 @@ void __declspec(naked) VehicleReflSkyboxBrightnessCodeCave()
 		lea ebx, dword ptr ds : [VehicleReflSkyboxBrightness]
 		fld dword ptr ds : [eax]
 		fstp dword ptr ds : [ebx]
-		fld dword ptr ds : [eax + 0x4]
+		fld dword ptr ds : [eax + 0x04]
 		fsub dword ptr ds : [VehicleReflSkyboxBrightnessSubtraction]
 		fstp dword ptr ds : [ebx + 0x04]
 		mov eax, ebx
@@ -561,13 +578,26 @@ void __declspec(naked) VehicleReflFlareSizeCodeCave()
 	}
 }
 
+void __declspec(naked) CubemapFixCodeCave()
+{
+	_asm
+	{
+		mov eax, 0x9D083C // "QRACE"
+		mov dword ptr ds : [0x9E87E4], 0x47454E58 // ZNEG = XNEG
+		mov dword ptr ds : [0x9E87EC], 0x534F5058 // ZPOS = XPOS
+		mov dword ptr ds : [0x9E8804], 0x47454E5A // XNEG = ZNEG
+		mov dword ptr ds : [0x9E880C], 0x534F505A // XPOS = ZPOS
+		ret 0x04
+	}
+}
+
 void __declspec(naked) PauseBlurCodeCave()
 {
 	_asm
 	{
-		cmp dword ptr ds : [0xA8AD18], 0x00 //on pause screen
+		cmp dword ptr ds : [0xA8AD18], 0x00 // checks for pause
 		je originalcode
-		cmp dword ptr ds : [0xA590A0], 0x1F41 //not on photo mode
+		cmp dword ptr ds : [0xA590A0], 0x1F41 // checks for photo mode
 		je originalcode
 		fadd dword ptr ds : [PauseBlurValue1] // 1.0f
 
@@ -580,9 +610,9 @@ void __declspec(naked) PauseBlurCodeCave2()
 {
 	_asm
 	{
-		cmp dword ptr ds : [0xA8AD18], 0x00 //on pause screen
+		cmp dword ptr ds : [0xA8AD18], 0x00 // checks for pause
 		je originalcode
-		cmp dword ptr ds : [0xA590A0], 0x1F41 //not on photo mode
+		cmp dword ptr ds : [0xA590A0], 0x1F41 // checks for photo mode
 		je originalcode
 		fadd dword ptr ds : [PauseBlurValue2] // 10.0f
 
@@ -637,12 +667,15 @@ void Init()
 		injector::WriteMemory<uint32_t>(0x71BDF8, ResY * RoadScale, true);
 		// Vehicle Reflection
 		injector::WriteMemory<uint32_t>(0x70DE39, ResY * VehicleScale, true);
-		// RVM Reflection
+		// Rearview Mirror
 		// Aspect ratio is based on NFSU2 because true aspect ratio is unknown
 		injector::WriteMemory<uint32_t>(0x70DB04, ResY * MirrorScale, true);
 		injector::MakeNOP(0x70DB08, 2, true);
 		injector::WriteMemory<uint32_t>(0x70DB62, (ResY / 3) * MirrorScale, true);
 		injector::MakeNOP(0x70DB66, 2, true);
+		// Picture-In-Picture
+		injector::WriteMemory<uint32_t>(0xA63B00, ResY * MirrorScale, true);
+		injector::WriteMemory<uint32_t>(0xA63B04, ResY * MirrorScale, true);
 	}
 
 	if (ImproveReflectionLOD >= 1)
@@ -669,6 +702,8 @@ void Init()
 		injector::MakeJMP(0x7498AA, VehicleReflSkyboxBrightnessCodeCave, true);
 		// Adjusts the size of flares in the vehicle reflection
 		injector::MakeJMP(0x74D9D5, VehicleReflFlareSizeCodeCave, true);
+		// Fixes the "QRACE" cubemap
+		injector::MakeJMP(0x572C30, CubemapFixCodeCave, true);
 	}
 
 	if (BrokenReflectionFix)
