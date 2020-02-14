@@ -23,10 +23,10 @@ float VehicleReflBrightnessAddition = 0.0f;
 float VehicleReflBrightnessSubtraction = 1.6f;
 float VehicleReflBrightnessAddition2 = 0.0f;
 float VehicleReflBrightnessSubtraction2 = 0.95f;
-float FEVehicleReflBrightnessAddition = 1.5f;
+float FEVehicleReflBrightnessAddition = 2.5f;
 float FEVehicleReflBrightnessSubtraction = 1.0f;
 float FEReflBrightness = 0.15f;
-float VehicleReflSkyboxBrightnessSubtraction = 1.5f;
+float VehicleReflSkyboxBrightnessSubtraction = 1.75f;
 __int64 VehicleReflBrightness;
 __int64 VehicleReflBrightness2;
 __int64 FEVehicleReflBrightness;
@@ -191,9 +191,9 @@ void __declspec(naked) RealisticChromeCodeCave()
 		cmp byte ptr ds : [0xA63E77], 0x00 // checks if vehicle reflections are enabled
 		jle NoRealisticChromeCodeCave
 		mov ecx, dword ptr ds : [0xA6B910]
-		mov dword ptr ds : [ecx - 0xB90], 0x40800000 // Chrome Materiel Intensity
-		mov dword ptr ds : [ecx - 0xBF0], 0x00000000 // Chrome Materiel Brightness
-		mov dword ptr ds : [ecx - 0xC00], 0x3E800000 // Chrome Materiel Reflect Brightness
+		mov dword ptr ds : [ecx - 0xB90], 0x40C00000 // Chrome Materiel Intensity: 6.0f
+		mov dword ptr ds : [ecx - 0xBF0], 0x3E000000 // Chrome Materiel Brightness: 0.125f
+		mov dword ptr ds : [ecx - 0xC00], 0x3E800000 // Chrome Materiel Reflect Brightness: 0.25f
 		jmp RealisticChromeCodeCavePart2
 
 	NoRealisticChromeCodeCave:
@@ -286,7 +286,8 @@ void __declspec(naked) VehicleReflShaderCodeCave()
 {
 	__asm {
 		mov ecx, dword ptr ds : [edi + 0x04]
-		cmp ecx, 0x01 // excludes geometry
+	// excludes geometry
+		cmp ecx, 0x01
 		je VehicleReflShaderCodeCavePart2
 		jmp VehicleReflShaderCodeCaveExit
 
@@ -294,7 +295,8 @@ void __declspec(naked) VehicleReflShaderCodeCave()
 		push edi
 		mov edi, [esp + 0x0C]
 		mov edi, [edi + 0x08]
-		cmp edi, 0x16 // checks for vehicle reflection
+	// checks for vehicle reflection
+		cmp edi, 0x16
 		jnl VehicleReflShaderCodeCavePart3
 		pop edi
 		jmp VehicleReflShaderCodeCaveExit
@@ -312,7 +314,8 @@ void __declspec(naked) VehicleReflShaderSettingCodeCave()
 	_asm
 	{
 		mov eax, dword ptr ds : [0xB42FC8]
-		mov dword ptr ds : [eax + 0x1774], 0x02 // lowers shader detail of traffic signs
+	// lowers shader detail of traffic signs
+		mov dword ptr ds : [eax + 0x1774], 0x02
 		mov eax, dword ptr ds : [ebx + 0x1774]
 		jmp VehicleReflShaderSettingCodeCaveExit
 	}
@@ -810,8 +813,7 @@ void Init()
 		injector::WriteMemory(0x73C68E, &DOFStrength, true);
 		injector::WriteMemory(0x73C6A8, &DOFStrength, true);
 	}
-}
-	
+}	
 
 BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD reason, LPVOID /*lpReserved*/)
 {
@@ -831,5 +833,4 @@ BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD reason, LPVOID /*lpReserved*/)
 		}
 	}
 	return TRUE;
-	
 }
