@@ -1,5 +1,11 @@
 # NFSC HD Reflections
 
+## How To Use  
+1. Download and extract [NFSCHDReflections.zip](https://github.com/AeroWidescreen/NFSCHDReflections/releases).  
+2. Move the scripts folder to the game's install folder.  
+3. Download and extract [Ultimate-ASI-Loader.zip](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases).  
+4. Move dinput8.dll to the game's install folder.  
+
 ## Features
 - ResolutionX : Controls the horizontal resolution of reflections.  
 - ResolutionY : Controls the vertical resolution of reflections.  
@@ -15,7 +21,8 @@
 - CubemapFix : Corrects the arrangement of the "QRACE" cubemap used for vehicle reflections.  
 - RestoreSkybox : Adds the skybox to reflections.  
 - RealFrontEndReflections : Enables real-time vehicle reflections in the front end.  
-- ReflectionBlurStrength : Controls the amount of blur used for road reflections and increases its resolution.  
+- ReflectionBlurStrength : Controls the amount of blur used for road reflections and increases its resolution. 
+- VehicleReflectionBrightness : Controls the intensity of vehicle reflections.   
 
 ## Extra Features
 - TrafficSignFix : Solves an issue where some traffic signs would not reflect any light.  

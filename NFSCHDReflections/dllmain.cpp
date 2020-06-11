@@ -9,7 +9,7 @@
 bool HDReflections, AlignmentFix, AspectRatioFix, RestoreSkybox, XB360Reflections, RealFrontEndReflections, CubemapFix, TrafficSignFix, PauseBlur, RealisticChrome;
 int ResolutionX, ResolutionY, ImproveReflectionLOD, ReplaceVisualTreatment;
 int ResX, ResY;
-float RoadScale, VehicleScale, MirrorScale, PIPScale, ReflectionBlurStrength;
+float RoadScale, VehicleScale, MirrorScale, PIPScale, ReflectionBlurStrength, VehicleReflectionBrightness;
 float DOFStrength = 1.0f;
 float ReflectionAspectRatioOriginal = 0.585f;
 float ReflectionAspectRatioCorrectedAlignmentFix = 0.0f;
@@ -525,14 +525,17 @@ void __declspec(naked) FEReflBrightnessCodeCave()
 		cmp byte ptr ds : [XB360Reflections], 0x00
 		jg FEReflBrightnessCodeCavePart2
 		fmul dword ptr ds : [FEReflBrightness]
+		fmul dword ptr ds : [VehicleReflectionBrightness]
 		fstp dword ptr ds : [esp + 0x30]
 		fld dword ptr ds : [esi + 0xCC]
 		fmul dword ptr ds : [esi + 0xC4]
 		fmul dword ptr ds : [FEReflBrightness]
+		fmul dword ptr ds : [VehicleReflectionBrightness]
 		fstp dword ptr ds : [esp + 0x34]
 		fld dword ptr ds : [esi + 0xD0]
 		fmul dword ptr ds : [esi + 0xC4]
 		fmul dword ptr ds : [FEReflBrightness]
+		fmul dword ptr ds : [VehicleReflectionBrightness]
 		fstp dword ptr ds : [esp + 0x38]
 		fld dword ptr ds : [esi + 0xD8]
 		fmul dword ptr ds : [esi + 0xD4]
@@ -540,6 +543,7 @@ void __declspec(naked) FEReflBrightnessCodeCave()
 		mov edx, dword ptr ds : [esi + 0x54]
 		mov ecx, dword ptr ds : [esi + 0xB8]
 		fmul dword ptr ds : [FEReflBrightness]
+		fmul dword ptr ds : [VehicleReflectionBrightness]
 		mov dword ptr ds : [esp + 0x54], eax
 		mov dword ptr ds : [esp + 0x7C], 0x00
 		mov dword ptr ds : [esp + 0x50], edx
@@ -550,11 +554,13 @@ void __declspec(naked) FEReflBrightnessCodeCave()
 		fld dword ptr ds : [esi + 0xDC]
 		fmul dword ptr ds : [esi + 0xD4]
 		fmul dword ptr ds : [FEReflBrightness]
+		fmul dword ptr ds : [VehicleReflectionBrightness]
 		fsub dword ptr ds : [esp + 0x34]
 		fstp dword ptr ds : [esp + 0x74]
 		fld dword ptr ds : [esi + 0xE0]
 		fmul dword ptr ds : [esi + 0xD4]
 		fmul dword ptr ds : [FEReflBrightness]
+		fmul dword ptr ds : [VehicleReflectionBrightness]
 		jmp FEReflBrightnessCodeCaveExit
 
 	FEReflBrightnessCodeCavePart2:
@@ -657,6 +663,7 @@ void Init()
 	RestoreSkybox = iniReader.ReadInteger("GENERAL", "RestoreSkybox", 1);
 	RealFrontEndReflections = iniReader.ReadInteger("GENERAL", "RealFrontEndReflections", 0);
 	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 1.0f);
+	VehicleReflectionBrightness = iniReader.ReadFloat("GENERAL", "VehicleReflectionBrightness", 1.0);
 
 	// Extra
 	TrafficSignFix = iniReader.ReadInteger("EXTRA", "TrafficSignFix", 1);
@@ -812,6 +819,17 @@ void Init()
 		// GaussBlur5x5
 		injector::WriteMemory(0x73C68E, &DOFStrength, true);
 		injector::WriteMemory(0x73C6A8, &DOFStrength, true);
+	}
+
+	if (VehicleReflectionBrightness)
+	{
+		static float VehicleReflectionIntensity = (0.5f * VehicleReflectionBrightness);
+		injector::WriteMemory(0x71E1AA, &VehicleReflectionIntensity, true);
+		injector::WriteMemory(0x71E1C0, &VehicleReflectionIntensity, true);
+		injector::WriteMemory(0x71E1D6, &VehicleReflectionIntensity, true);
+		injector::WriteMemory(0x71E1FB, &VehicleReflectionIntensity, true);
+		injector::WriteMemory(0x71E231, &VehicleReflectionIntensity, true);
+		injector::WriteMemory(0x71E24B, &VehicleReflectionIntensity, true);
 	}
 }	
 
