@@ -6,15 +6,23 @@
 #include "..\includes\IniReader.h"
 #include <d3d9.h>
 
-bool HDReflections, AlignmentFix, AspectRatioFix, RestoreSkybox, XB360Reflections, RealFrontEndReflections, CubemapFix, TrafficSignFix, PauseBlur, RealisticChrome;
-int ResolutionX, ResolutionY, ImproveReflectionLOD, ReplaceVisualTreatment;
-int ResX, ResY;
-float RoadScale, VehicleScale, MirrorScale, PIPScale, ReflectionBlurStrength, VehicleReflectionBrightness;
+bool HDReflections, OldGPUCompatibility, AlignmentFix, AspectRatioFix, RestoreSkybox, XB360Reflections, EnableMirror, SynchronizeVisualTreatment, RealFrontEndReflections, CubemapFix, TrafficSignFix, PauseBlur, RealisticChrome;
+int ImproveReflectionLOD, ReplaceVisualTreatment;
+
+int RoadResX = 320;
+int RoadResY = 240;
+int VehicleRes = 256;
+int MirrorResX = 512;
+int MirrorResY = 256;
+int PIPRes = 256;
+
+float RoadScale, VehicleScale, MirrorScale, PIPScale, VehicleReflectionBrightness;
+float ReflectionBlurStrength;
 float DOFStrength = 1.0f;
+float BloomBlurStrength = 1.0f;
 float ReflectionAspectRatioOriginal = 0.585f;
 float ReflectionAspectRatioCorrectedAlignmentFix = 0.0f;
 float ReflectionAspectRatioCorrected = -0.6f;
-float FEReflectionStrength = 1.0f;
 float TrafficSignDistance = 45000.0f;
 float PauseBlurValue1 = 1.0f;
 float PauseBlurValue2 = 10.0f;
@@ -38,10 +46,6 @@ DWORD RoadReflectionCodeCave2Exit = 0x71AA7B;
 DWORD RoadReflectionRes2;
 DWORD RoadReflectionCodeCave3Exit = 0x71A9FE;
 DWORD RoadReflectionRes3;
-DWORD DownScale4x4ReturnAddress;
-DWORD DownScale4x4ReturnAddressCodeCaveExit = 0x748886;
-DWORD DownScale4x4StrengthCodeCaveExit1 = 0x73CC2F;
-DWORD DownScale4x4StrengthCodeCaveExit2 = 0x73CC43;
 DWORD TrafficSignFixCodeCaveExit = 0x71E085;
 DWORD RealisticChromeCodeCaveExit = 0x71E08F;
 DWORD ImproveReflectionLODCodeCave1Exit = 0x79FB65;
@@ -63,12 +67,14 @@ DWORD FEReflBrightnessCodeCavePart2Exit = 0x71E1A8;
 DWORD VehicleReflRenderDistanceCodeCaveExit = 0x721DEB;
 DWORD sub_713B30 = 0x713B30;
 DWORD VehicleReflFlareSizeCodeCaveExit = 0x74D9DC;
+DWORD VisualTreatmentCodeCaveExit1 = 0x71D706;
+DWORD VisualTreatmentCodeCaveExit2 = 0x71D700;
 
 void __declspec(naked) RoadReflectionCodeCave1()
 {
 	__asm {
 	// for widescreen fix compatibility
-		fild dword ptr ds : [ResX]
+		fild dword ptr ds : [RoadResX]
 		fmul dword ptr ds : [RoadScale]
 		fistp dword ptr ds : [RoadReflectionRes1]
 		mov edx, dword ptr ds : [RoadReflectionRes1]
@@ -83,7 +89,7 @@ void __declspec(naked) RoadReflectionCodeCave2()
 {
 	__asm {
 	// for widescreen fix compatibility
-		fild dword ptr ds : [ResX]
+		fild dword ptr ds : [RoadResX]
 		fmul dword ptr ds : [RoadScale]
 		fistp dword ptr ds : [RoadReflectionRes2]
 		mov ecx, dword ptr ds : [RoadReflectionRes2]
@@ -99,7 +105,7 @@ void __declspec(naked) RoadReflectionCodeCave3()
 	__asm {
 	// for widescreen fix compatibility
 		mov eax, dword ptr ds : [0xAB0ABC]
-		fild dword ptr ds : [ResY]
+		fild dword ptr ds : [RoadResY]
 		fmul dword ptr ds : [RoadScale]
 		fistp dword ptr ds : [RoadReflectionRes3]
 		mov edx, dword ptr ds : [RoadReflectionRes3]
@@ -107,66 +113,27 @@ void __declspec(naked) RoadReflectionCodeCave3()
 	}
 }
 
-void __declspec(naked) DownScale4x4ReturnAddressCodeCave()
+void __declspec(naked) DownScale4x4StrengthCodeCave()
 {
 	__asm {
-	// gets return address
-		push eax
-		mov eax, dword ptr ds : [esp + 0x4]
-		mov dword ptr ds : [DownScale4x4ReturnAddress], eax
-		pop eax
-		push ebp
-		mov ebp, esp
-		and esp, 0xFFFFFFF0
-		jmp DownScale4x4ReturnAddressCodeCaveExit
-	}
-}
-
-void __declspec(naked) DownScale4x4StrengthCodeCave1()
-{
-	__asm {
-		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x72E22E
-		je DownScale4x4StrengthCodeCave1Part2
-		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x726B17
-		je DownScale4x4StrengthCodeCave1Part3
+		cmp dword ptr ds : [ebp + 0x04], 0x72E22E // Road Reflection Return Address
+		je DownScale4x4StrengthCodeCaveRoad
+		cmp dword ptr ds : [ebp + 0x04], 0x726B17 // Bloom Return Address
+		je DownScale4x4StrengthCodeCaveBloom
 		
 	// restores horizontal depth of field
 		fdivr dword ptr ds : [DOFStrength]
-		jmp DownScale4x4StrengthCodeCaveExit1
+		ret
+
+	DownScale4x4StrengthCodeCaveBloom:
+	// restores horizontal frontend blur
+		fdivr dword ptr ds : [BloomBlurStrength]
+		ret
 		
-	DownScale4x4StrengthCodeCave1Part2 :
+	DownScale4x4StrengthCodeCaveRoad:
 	// horizontal road reflection
 		fdivr dword ptr ds : [ReflectionBlurStrength]
-		jmp DownScale4x4StrengthCodeCaveExit1
-
-	DownScale4x4StrengthCodeCave1Part3 :
-	// restores horizontal frontend blur
-		fdivr dword ptr ds : [FEReflectionStrength]
-		jmp DownScale4x4StrengthCodeCaveExit1	
-	}
-}
-
-void __declspec(naked) DownScale4x4StrengthCodeCave2()
-{
-	__asm {
-		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x72E22E
-		je DownScale4x4StrengthCodeCave2Part2
-		cmp dword ptr ds : [DownScale4x4ReturnAddress], 0x726B17
-		je DownScale4x4StrengthCodeCave2Part3
-		
-	// restores vertical depth of field
-		fdivr dword ptr ds : [DOFStrength]
-		jmp DownScale4x4StrengthCodeCaveExit2
-
-	DownScale4x4StrengthCodeCave2Part2 :
-	// vertical road reflection
-		fdivr dword ptr ds : [ReflectionBlurStrength]
-		jmp DownScale4x4StrengthCodeCaveExit2
-
-	DownScale4x4StrengthCodeCave2Part3 :
-	// restores vertical frontend blur
-		fdivr dword ptr ds : [FEReflectionStrength]
-		jmp DownScale4x4StrengthCodeCaveExit2
+		ret
 	}
 }
 
@@ -314,8 +281,7 @@ void __declspec(naked) VehicleReflShaderSettingCodeCave()
 	_asm
 	{
 		mov eax, dword ptr ds : [0xB42FC8]
-	// lowers shader detail of traffic signs
-		mov dword ptr ds : [eax + 0x1774], 0x02
+		mov dword ptr ds : [eax + 0x1774], 0x02 // lowers shader detail of traffic signs
 		mov eax, dword ptr ds : [ebx + 0x1774]
 		jmp VehicleReflShaderSettingCodeCaveExit
 	}
@@ -640,65 +606,98 @@ void __declspec(naked) PauseBlurCodeCave2()
 	}
 }
 
+void __declspec(naked) VisualTreatmentCodeCave()
+{
+	_asm
+	{
+		cmp byte ptr ds : [0xA65394], 00
+		jne VisualTreatmentCodeCaveEnabled // jumps if Visual Treatment is enabled
+		mov edx, dword ptr ds : [0xB43070] // No Tint
+		jmp VisualTreatmentCodeCaveExit1
+
+		VisualTreatmentCodeCaveEnabled:
+		jmp VisualTreatmentCodeCaveExit2
+	}
+}
+
 void Init()
 {
 	// Read values from .ini
 	CIniReader iniReader("NFSCHDReflections.ini");
 
 	// Resolution
-	ResX = iniReader.ReadInteger("RESOLUTION", "ResolutionX", 0);
-	ResY = iniReader.ReadInteger("RESOLUTION", "ResolutionY", 0);
-	RoadScale = iniReader.ReadFloat("RESOLUTION", "RoadScale", 1.0);
+	HDReflections = iniReader.ReadInteger("RESOLUTION", "HDReflections", 1);
+	OldGPUCompatibility = iniReader.ReadInteger("RESOLUTION", "OldGPUCompatibility", 0);
 	VehicleScale = iniReader.ReadFloat("RESOLUTION", "VehicleScale", 1.0);
+	RoadScale = iniReader.ReadFloat("RESOLUTION", "RoadScale", 1.0);
 	MirrorScale = iniReader.ReadFloat("RESOLUTION", "MirrorScale", 1.0);
 	PIPScale = iniReader.ReadFloat("RESOLUTION", "PIPScale", 1.0);
 
 	// General
-	HDReflections = iniReader.ReadInteger("GENERAL", "HDReflections", 1);
 	ImproveReflectionLOD = iniReader.ReadInteger("GENERAL", "ImproveReflectionLOD", 1);
 	XB360Reflections = iniReader.ReadInteger("GENERAL", "XB360Reflections", 1);
 	AlignmentFix = iniReader.ReadInteger("GENERAL", "AlignmentFix", 1);
 	AspectRatioFix = iniReader.ReadInteger("GENERAL", "AspectRatioFix", 1);
 	CubemapFix = iniReader.ReadInteger("GENERAL", "CubemapFix", 1);
 	RestoreSkybox = iniReader.ReadInteger("GENERAL", "RestoreSkybox", 1);
+	EnableMirror = iniReader.ReadInteger("GENERAL", "EnableMirror", 1);
+	SynchronizeVisualTreatment = iniReader.ReadInteger("GENERAL", "SynchronizeVisualTreatment", 1);
 	RealFrontEndReflections = iniReader.ReadInteger("GENERAL", "RealFrontEndReflections", 0);
 	ReflectionBlurStrength = iniReader.ReadFloat("GENERAL", "ReflectionBlurStrength", 1.0f);
 	VehicleReflectionBrightness = iniReader.ReadFloat("GENERAL", "VehicleReflectionBrightness", 1.0);
 
 	// Extra
-	TrafficSignFix = iniReader.ReadInteger("EXTRA", "TrafficSignFix", 1);
 	ReplaceVisualTreatment = iniReader.ReadInteger("EXTRA", "ReplaceVisualTreatment", 0);
+	TrafficSignFix = iniReader.ReadInteger("EXTRA", "TrafficSignFix", 1);
 	PauseBlur = iniReader.ReadInteger("EXTRA", "PauseBlur", 0);
 	RealisticChrome = iniReader.ReadInteger("EXTRA", "RealisticChrome", 0);
 
-	if (ResX <= 0 || ResY <= 0)
+	if (HDReflections)
 	{
-		ResX = ::GetSystemMetrics(SM_CXSCREEN);
-		ResY = ::GetSystemMetrics(SM_CYSCREEN);
+		RoadResX = GetSystemMetrics(SM_CXSCREEN);
+		RoadResY = GetSystemMetrics(SM_CYSCREEN);
+		VehicleRes = GetSystemMetrics(SM_CYSCREEN);
+		MirrorResX = GetSystemMetrics(SM_CYSCREEN);
+		MirrorResY = GetSystemMetrics(SM_CYSCREEN) / 3;
+		PIPRes = GetSystemMetrics(SM_CYSCREEN) / 3;
 	}
 
-	if (HDReflections)
+	// Writes Resolution Values
 	{
 		// Road Reflection X
 		injector::MakeJMP(0x71AA26, RoadReflectionCodeCave1, true);
 		injector::MakeJMP(0x71AA76, RoadReflectionCodeCave2, true);
-		injector::WriteMemory<uint32_t>(0x71BE28, ResX * RoadScale, true);
-		injector::WriteMemory<uint32_t>(0x71BDF1, ResX * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BE28, RoadResX * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BDF1, RoadResX * RoadScale, true);
 		// Road Reflection Y
 		injector::MakeJMP(0x71A9F2, RoadReflectionCodeCave3, true);
-		injector::WriteMemory<uint32_t>(0x71BE2F, ResY * RoadScale, true);
-		injector::WriteMemory<uint32_t>(0x71BDF8, ResY * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BE2F, RoadResY * RoadScale, true);
+		injector::WriteMemory<uint32_t>(0x71BDF8, RoadResY * RoadScale, true);
 		// Vehicle Reflection
-		injector::WriteMemory<uint32_t>(0x70DE39, ResY * VehicleScale, true);
+		injector::WriteMemory<uint32_t>(0x70DE39, VehicleRes * VehicleScale, true);
 		// Rearview Mirror
 		// Aspect ratio is based on NFSU2 because true aspect ratio is unknown
-		injector::WriteMemory<uint32_t>(0x70DB04, ResY * MirrorScale, true);
+		injector::WriteMemory<uint32_t>(0x70DB04, MirrorResX * MirrorScale, true);
 		injector::MakeNOP(0x70DB08, 2, true);
-		injector::WriteMemory<uint32_t>(0x70DB62, (ResY / 3) * MirrorScale, true);
+		injector::WriteMemory<uint32_t>(0x70DB62, MirrorResY * MirrorScale, true);
 		injector::MakeNOP(0x70DB66, 2, true);
 		// Picture-In-Picture
-		injector::WriteMemory<uint32_t>(0xA63B00, (ResY / 3) * PIPScale, true);
-		injector::WriteMemory<uint32_t>(0xA63B04, (ResY / 3) * PIPScale, true);
+		injector::WriteMemory<uint32_t>(0xA63B00, PIPRes * PIPScale, true);
+		injector::WriteMemory<uint32_t>(0xA63B04, PIPRes * PIPScale, true);
+
+		if (OldGPUCompatibility)
+		{
+			// Rounds vehicle resolution down to the nearest power of two
+			static int VehicleRes_POT = (VehicleRes * VehicleScale);
+			VehicleRes_POT--;
+			VehicleRes_POT |= VehicleRes_POT >> 1;
+			VehicleRes_POT |= VehicleRes_POT >> 2;
+			VehicleRes_POT |= VehicleRes_POT >> 4;
+			VehicleRes_POT |= VehicleRes_POT >> 8;
+			VehicleRes_POT |= VehicleRes_POT >> 16;
+			VehicleRes_POT++;
+			injector::WriteMemory<uint32_t>(0x70DE39, VehicleRes_POT, true);
+		}
 	}
 
 	if (ImproveReflectionLOD >= 1)
@@ -756,6 +755,35 @@ void Init()
 		injector::WriteMemory<uint32_t>(0x7AFC35, 0xBF800000, true);
 	}
 
+	if (EnableMirror)
+	{
+		// Enables the rearview mirror by default
+		injector::WriteMemory<uint32_t>(0x4BD511, 0x00000001, true);
+	}
+
+	if (SynchronizeVisualTreatment)
+	{
+		// Rearview Mirror
+		injector::MakeCALL(0x750CAB, VisualTreatmentCodeCave, true);
+		// Picture-In-Picture
+		injector::MakeCALL(0x750D9F, VisualTreatmentCodeCave, true);
+	}
+
+	if (ReplaceVisualTreatment >= 1)
+	{
+		if (ReplaceVisualTreatment == 1)
+		{
+			// Purple Tint
+			injector::WriteMemory<uint32_t>(0x71D702, 0xB4306C, true);
+		}
+		
+		else
+		{
+			// No Tint
+			injector::WriteMemory<uint32_t>(0x71D702, 0xB43070, true);
+		}
+	}
+
 	if (RealFrontEndReflections)
 	{
 		// Enables real reflections
@@ -781,16 +809,6 @@ void Init()
 		injector::WriteMemory(0x79B257, &TrafficSignDistance, true);
 	}
 
-	if (ReplaceVisualTreatment >= 1)
-	{
-		// Purple Tint
-		injector::WriteMemory<uint32_t>(0x71D702, 0xB4306C, true);
-
-		if (ReplaceVisualTreatment >= 2)
-		// No Tint
-		injector::WriteMemory<uint32_t>(0x71D702, 0xB43070, true);
-	}
-
 	if (PauseBlur)
 	{
 		injector::MakeJMP(0x73ECA6, PauseBlurCodeCave, true);
@@ -807,10 +825,11 @@ void Init()
 	
 	if (ReflectionBlurStrength >= 0)
 	{
-		// Jumps
-		injector::MakeJMP(0x748880, DownScale4x4ReturnAddressCodeCave, true);
-		injector::MakeJMP(0x73CC29, DownScale4x4StrengthCodeCave1, true);
-		injector::MakeJMP(0x73CC3D, DownScale4x4StrengthCodeCave2, true);
+		// Calls
+		injector::MakeCALL(0x73CC29, DownScale4x4StrengthCodeCave, true);
+		injector::MakeNOP(0x73CC2E, 1, true);
+		injector::MakeCALL(0x73CC3D, DownScale4x4StrengthCodeCave, true);
+		injector::MakeNOP(0x73CC42, 1, true);
 		// Allows blur to render at full resolution
 		injector::MakeNOP(0x713108, 2, true);
 		injector::MakeNOP(0x713141, 2, true);

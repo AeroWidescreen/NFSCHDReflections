@@ -24,3 +24,10 @@ NFSCHDReflections/Release/NFSCHDReflections/scripts/NFSCHDReflections.ipdb
 NFSCHDReflections/Release/NFSCHDReflections/scripts/NFSCHDReflections.pdb
 NFSCHDReflections/Release/stdafx.obj
 NFSCHDReflections/Release/vc142.pdb
+*.db-shm
+*.db-wal
+*.opendb
+*.ipch
+NFSCHDReflections/Release/NFSCHDReflections.asi.recipe
+NFSCHDReflections/Release/NFSCHDReflections.iobj
+NFSCHDReflections/Release/NFSCHDReflections.ipdb
