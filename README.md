@@ -30,6 +30,22 @@
 - PauseBlur : Blurs the background whenever the game is paused.  
 - RealisticChrome : Makes the chrome materiel more reflective.  
 
+## FAQ
+Q: What are the original resolution values?  
+A: It varies from game to game. For this one it's Road: 320x240, Vehicle: 256x256, Mirror: 512x256, and PIP: 256x256.  
+
+Q: What does "PIP" mean?  
+A: Picture-In-Picture. It's the box that occasionally appears when racing against a boss character.
+
+Q: Isn't PauseBlur from Extra Options? Why did you add this feature?  
+A: I'm the creator of PauseBlur, and since not everyone uses Extra Options, there's no reason why I shouldn't add it.
+
+Q: Is this compatible with other mods?  
+A: I can't make any guarantees. It's been tested with Widescreen Fix, Extra Options, Unlimiter, HUD Adapter, and HUD Resizer. All texture mods and car mods should work.  
+
+Q: What are the system requirements?  
+A: It's difficult to say because it depends on your resolution, settings, and other enhancements being used. For 1080p, anything with a GTX 1060 / RX 480, Core i5 / Ryzen 3 should be able to easily run this.  
+
 ## Credits
 [Aero_](https://github.com/AeroWidescreen) : Creator of NFSC HD Reflections.  
 [ExOpts Team](https://github.com/ExOptsTeam/) : The project is based on Extra Options and it wouldn't exist without them.
