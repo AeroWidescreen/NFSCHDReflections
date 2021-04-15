@@ -18,7 +18,7 @@
 - AspectRatioFix : Corrects the proportions of vehicle reflections.  
 - CubemapFix : Corrects the arrangement of the "QRACE" cubemap used for vehicle reflections.  
 - RestoreSkybox : Adds the skybox to reflections.  
-- EnableMirror : Enables the mirror when a new profile is created or whenever default settings are applied.
+- EnableMirror : Enables the mirror when a new profile is created or when default settings are used.
 - SynchronizeVisualTreatment : Dynamically changes the mirror and picture-in-picture to match the current visual treatment setting.  
 - RealFrontEndReflections : Enables real-time vehicle reflections in the front end.  
 - ReflectionBlurStrength : Controls the amount of blur used for road reflections and increases its resolution. 
