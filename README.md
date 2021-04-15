@@ -35,4 +35,4 @@
 [ExOpts Team](https://github.com/ExOptsTeam/) : The project is based on Extra Options and it wouldn't exist without them.
 
 ## Thanks
-[SpeedyHeart] (https://www.youtube.com/channel/UCqjZlgUZLRYT16jGaPHlkeA) : Providing information needed for RestoreSkybox and AspectRatioFix.
+[SpeedyHeart](https://www.youtube.com/channel/UCqjZlgUZLRYT16jGaPHlkeA) : Providing information needed for RestoreSkybox and AspectRatioFix.
